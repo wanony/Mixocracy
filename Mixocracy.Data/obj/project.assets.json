@@ -1,0 +1,96 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "Mixocracy.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/Mixocracy.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Mixocracy.Core.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Mixocracy.Core/1.0.0": {
+      "type": "project",
+      "path": "../Mixocracy.Core/Mixocracy.Core.csproj",
+      "msbuildProject": "../Mixocracy.Core/Mixocracy.Core.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "Mixocracy.Core >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "/home/wman/.nuget/packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "/home/wman/RiderProjects/Mixocracy/Mixocracy.Data/Mixocracy.Data.csproj",
+      "projectName": "Mixocracy.Data",
+      "projectPath": "/home/wman/RiderProjects/Mixocracy/Mixocracy.Data/Mixocracy.Data.csproj",
+      "packagesPath": "/home/wman/.nuget/packages/",
+      "outputPath": "/home/wman/RiderProjects/Mixocracy/Mixocracy.Data/obj/",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "/home/wman/.nuget/NuGet/NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "/usr/lib/dotnet/library-packs": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {
+            "/home/wman/RiderProjects/Mixocracy/Mixocracy.Core/Mixocracy.Core.csproj": {
+              "projectPath": "/home/wman/RiderProjects/Mixocracy/Mixocracy.Core/Mixocracy.Core.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.100"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.109/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}
