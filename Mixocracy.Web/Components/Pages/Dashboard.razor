@@ -1,0 +1,262 @@
+@page "/dashboard"
+@using Mixocracy.Core.Models
+@using Mixocracy.Web.Services
+@inject IPlaylistService PlaylistService
+@inject IUserService UserService
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard - Mixocracy</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Dashboard</h1>
+            
+            @if (isLoading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (currentUser != null)
+            {
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5>My Playlists</h5>
+                                <button class="btn btn-primary btn-sm" @onclick="CreatePlaylist">
+                                    <i class="bi bi-plus"></i> Create Playlist
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                @if (playlists.Any())
+                                {
+                                    <div class="row">
+                                        @foreach (var playlist in playlists)
+                                        {
+                                            <div class="col-md-6 col-lg-4 mb-3">
+                                                <div class="card h-100">
+                                                    <div class="card-body">
+                                                        <h6 class="card-title">@playlist.Name</h6>
+                                                        <p class="card-text text-muted small">@playlist.Description</p>
+                                                        <p class="card-text">
+                                                            <small class="text-muted">
+                                                                @playlist.Members.Count members
+                                                            </small>
+                                                        </p>
+                                                    </div>
+                                                    <div class="card-footer">
+                                                        <a href="/playlist/@playlist.Id" class="btn btn-sm btn-outline-primary">View</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-4">
+                                        <h6 class="text-muted">No playlists yet</h6>
+                                        <p class="text-muted">Create your first playlist to get started!</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6>Quick Actions</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary" @onclick="CreatePlaylist">
+                                        <i class="bi bi-plus-circle"></i> Create Playlist
+                                    </button>
+                                    <button class="btn btn-outline-secondary" @onclick="JoinPlaylist">
+                                        <i class="bi bi-box-arrow-in-right"></i> Join Playlist
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6>Profile</h6>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Username:</strong> @currentUser.Username</p>
+                                <p><strong>Display Name:</strong> @currentUser.DisplayName</p>
+                                <p><strong>Email:</strong> @currentUser.Email</p>
+                                <small class="text-muted">Member since @currentUser.CreatedAt.ToString("MMM yyyy")</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <h5>Welcome to Mixocracy!</h5>
+                    <p>Please log in to access your dashboard.</p>
+                    <a href="/login" class="btn btn-primary">Login</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Create Playlist Modal -->
+@if (showCreateModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Playlist</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" @bind="newPlaylistName" placeholder="Enter playlist name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description (optional)</label>
+                        <textarea class="form-control" @bind="newPlaylistDescription" rows="3" placeholder="Enter playlist description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCreateModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SubmitCreatePlaylist" disabled="@(string.IsNullOrWhiteSpace(newPlaylistName))">
+                        Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Join Playlist Modal -->
+@if (showJoinModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Join Playlist</h5>
+                    <button type="button" class="btn-close" @onclick="CloseJoinModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Invite Code</label>
+                        <input type="text" class="form-control" @bind="inviteCode" placeholder="Enter invite code" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseJoinModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SubmitJoinPlaylist" disabled="@(string.IsNullOrWhiteSpace(inviteCode))">
+                        Join
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private User? currentUser;
+    private List<Playlist> playlists = new();
+    private bool isLoading = true;
+    
+    private bool showCreateModal = false;
+    private bool showJoinModal = false;
+    private string newPlaylistName = "";
+    private string newPlaylistDescription = "";
+    private string inviteCode = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        
+        // For demo purposes, get the first user
+        // In a real app, this would come from authentication
+        var users = await UserService.SearchUsersAsync("test", 1);
+        if (users.Any())
+        {
+            currentUser = users.First();
+            playlists = await PlaylistService.GetUserPlaylistsAsync(currentUser.Id);
+        }
+        
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void CreatePlaylist()
+    {
+        showCreateModal = true;
+        newPlaylistName = "";
+        newPlaylistDescription = "";
+    }
+
+    private void CloseCreateModal()
+    {
+        showCreateModal = false;
+    }
+
+    private async Task SubmitCreatePlaylist()
+    {
+        if (currentUser != null && !string.IsNullOrWhiteSpace(newPlaylistName))
+        {
+            var platforms = new List<Mixocracy.Core.Enums.MusicPlatform>
+            {
+                Mixocracy.Core.Enums.MusicPlatform.Spotify
+            };
+            
+            var playlist = await PlaylistService.CreatePlaylistAsync(
+                currentUser.Id, 
+                newPlaylistName.Trim(), 
+                string.IsNullOrWhiteSpace(newPlaylistDescription) ? null : newPlaylistDescription.Trim(),
+                platforms);
+            
+            if (playlist != null)
+            {
+                await LoadData();
+                CloseCreateModal();
+            }
+        }
+    }
+
+    private void JoinPlaylist()
+    {
+        showJoinModal = true;
+        inviteCode = "";
+    }
+
+    private void CloseJoinModal()
+    {
+        showJoinModal = false;
+    }
+
+    private async Task SubmitJoinPlaylist()
+    {
+        if (currentUser != null && !string.IsNullOrWhiteSpace(inviteCode))
+        {
+            var success = await PlaylistService.JoinPlaylistAsync(inviteCode.Trim().ToUpper(), currentUser.Id);
+            if (success)
+            {
+                await LoadData();
+                CloseJoinModal();
+            }
+        }
+    }
+}

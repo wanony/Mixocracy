@@ -1,0 +1,178 @@
+@page "/login"
+@using Mixocracy.Web.Services
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Login - Mixocracy</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card mt-5">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <h3>Welcome to Mixocracy</h3>
+                        <p class="text-muted">Collaborative playlist management</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Username or Email</label>
+                        <input type="text" class="form-control" @bind="loginInput" placeholder="Enter username or email" />
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary" @onclick="HandleLogin" disabled="@(string.IsNullOrWhiteSpace(loginInput) || isLogging)">
+                            @if (isLogging)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            Login
+                        </button>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p class="text-muted mb-3">Don't have an account?</p>
+                        
+                        @if (showRegister)
+                        {
+                            <div class="mb-3">
+                                <input type="text" class="form-control mb-2" @bind="newUsername" placeholder="Username" />
+                                <input type="email" class="form-control mb-2" @bind="newEmail" placeholder="Email" />
+                                <input type="text" class="form-control mb-2" @bind="newDisplayName" placeholder="Display Name (optional)" />
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-success" @onclick="HandleRegister" disabled="@(string.IsNullOrWhiteSpace(newUsername) || string.IsNullOrWhiteSpace(newEmail) || isRegistering)">
+                                    @if (isRegistering)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    Create Account
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="CancelRegister">Cancel</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-primary" @onclick="ShowRegister">Create Account</button>
+                        }
+                    </div>
+
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <small class="text-muted">Demo: Use "testuser" to login with the pre-created account</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string loginInput = "";
+    private string errorMessage = "";
+    private bool isLogging = false;
+    
+    private bool showRegister = false;
+    private string newUsername = "";
+    private string newEmail = "";
+    private string newDisplayName = "";
+    private bool isRegistering = false;
+
+    private async Task HandleLogin()
+    {
+        isLogging = true;
+        errorMessage = "";
+
+        try
+        {
+            var user = await UserService.GetUserByUsernameAsync(loginInput.Trim());
+            if (user == null)
+            {
+                user = await UserService.GetUserByEmailAsync(loginInput.Trim());
+            }
+
+            if (user != null)
+            {
+                // In a real app, you'd set authentication state here
+                Navigation.NavigateTo("/dashboard");
+            }
+            else
+            {
+                errorMessage = "User not found. Please check your username/email or create an account.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during login. Please try again.";
+        }
+        finally
+        {
+            isLogging = false;
+        }
+    }
+
+    private void ShowRegister()
+    {
+        showRegister = true;
+        newUsername = "";
+        newEmail = "";
+        newDisplayName = "";
+        errorMessage = "";
+    }
+
+    private void CancelRegister()
+    {
+        showRegister = false;
+        errorMessage = "";
+    }
+
+    private async Task HandleRegister()
+    {
+        isRegistering = true;
+        errorMessage = "";
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(newUsername) || string.IsNullOrWhiteSpace(newEmail))
+            {
+                errorMessage = "Username and email are required.";
+                return;
+            }
+
+            var user = await UserService.CreateUserAsync(
+                newUsername.Trim(), 
+                newEmail.Trim(), 
+                string.IsNullOrWhiteSpace(newDisplayName) ? newUsername.Trim() : newDisplayName.Trim());
+
+            if (user != null)
+            {
+                // In a real app, you'd set authentication state here
+                Navigation.NavigateTo("/dashboard");
+            }
+            else
+            {
+                errorMessage = "Username or email already exists. Please try different values.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during registration. Please try again.";
+        }
+        finally
+        {
+            isRegistering = false;
+        }
+    }
+}

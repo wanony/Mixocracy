@@ -1,14 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <ProjectReference Include="..\Mixocracy.Core\Mixocracy.Core.csproj" />
-    <ProjectReference Include="..\Mixocracy.Data\Mixocracy.Data.csproj" />
-  </ItemGroup>
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
+        <PackageReference Include="SpotifyAPI.Web" Version="7.0.2" />
+        <PackageReference Include="Google.Apis.YouTube.v3" Version="1.68.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Mixocracy.Core\Mixocracy.Core.csproj" />
+        <ProjectReference Include="..\Mixocracy.Data\Mixocracy.Data.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Authentication\" />
+        <Folder Include="Components\UI\" />
+        <Folder Include="Configuration\" />
+    </ItemGroup>
 
 </Project>
