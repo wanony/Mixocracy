@@ -38,6 +38,32 @@
                         </button>
                     </div>
 
+                    <!-- Development Test Users Section -->
+                    @if (isDevelopment)
+                    {
+                        <hr class="my-4">
+                        <div class="text-center">
+                            <h6 class="text-muted mb-3">🧪 Development Test Users</h6>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-info btn-sm" @onclick="@(() => QuickLogin("testuser"))">
+                                    <small><strong>testuser</strong> - Test User (Owner of Friday Night Vibes)</small>
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" @onclick="@(() => QuickLogin("alice"))">
+                                    <small><strong>alice</strong> - Alice Johnson (Owner of Road Trip Mix)</small>
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" @onclick="@(() => QuickLogin("bob"))">
+                                    <small><strong>bob</strong> - Bob Smith (Owner of Workout Beats)</small>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => QuickLogin("charlie"))">
+                                    <small><strong>charlie</strong> - Charlie Brown</small>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => QuickLogin("diana"))">
+                                    <small><strong>diana</strong> - Diana Prince</small>
+                                </button>
+                            </div>
+                        </div>
+                    }
+
                     <hr class="my-4">
 
                     <div class="text-center">
@@ -67,12 +93,6 @@
                             <button class="btn btn-outline-primary" @onclick="ShowRegister">Create Account</button>
                         }
                     </div>
-
-                    <hr class="my-4">
-                    
-                    <div class="text-center">
-                        <small class="text-muted">Demo: Use "testuser" to login with the pre-created account</small>
-                    </div>
                 </div>
             </div>
         </div>
@@ -80,6 +100,9 @@
 </div>
 
 @code {
+    [Inject] public IWebHostEnvironment Environment { get; set; } = default!;
+    
+    private bool isDevelopment => Environment.IsDevelopment();
     private string loginInput = "";
     private string errorMessage = "";
     private bool isLogging = false;
@@ -121,6 +144,12 @@
         {
             isLogging = false;
         }
+    }
+
+    private async Task QuickLogin(string username)
+    {
+        loginInput = username;
+        await HandleLogin();
     }
 
     private void ShowRegister()

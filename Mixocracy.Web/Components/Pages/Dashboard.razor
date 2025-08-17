@@ -3,6 +3,7 @@
 @using Mixocracy.Web.Services
 @inject IPlaylistService PlaylistService
 @inject IUserService UserService
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>Dashboard - Mixocracy</PageTitle>
@@ -10,7 +11,24 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <h1 class="mb-4">Dashboard</h1>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Dashboard</h1>
+                @if (currentUser != null)
+                {
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Switch User (Dev)
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" @onclick="@(() => SwitchUser("testuser"))">testuser (Test User)</a></li>
+                            <li><a class="dropdown-item" href="#" @onclick="@(() => SwitchUser("alice"))">alice (Alice Johnson)</a></li>
+                            <li><a class="dropdown-item" href="#" @onclick="@(() => SwitchUser("bob"))">bob (Bob Smith)</a></li>
+                            <li><a class="dropdown-item" href="#" @onclick="@(() => SwitchUser("charlie"))">charlie (Charlie Brown)</a></li>
+                            <li><a class="dropdown-item" href="#" @onclick="@(() => SwitchUser("diana"))">diana (Diana Prince)</a></li>
+                        </ul>
+                    </div>
+                }
+            </div>
             
             @if (isLoading)
             {
@@ -26,7 +44,7 @@
                     <div class="col-md-8">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5>My Playlists</h5>
+                                <h5>My Playlists (@playlists.Count)</h5>
                                 <button class="btn btn-primary btn-sm" @onclick="CreatePlaylist">
                                     <i class="bi bi-plus"></i> Create Playlist
                                 </button>
@@ -39,17 +57,47 @@
                                         {
                                             <div class="col-md-6 col-lg-4 mb-3">
                                                 <div class="card h-100">
+                                                    @if (playlist.IsPublic)
+                                                    {
+                                                        <div class="card-header bg-success text-white py-1">
+                                                            <small><i class="bi bi-globe"></i> Public</small>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="card-header bg-warning text-dark py-1">
+                                                            <small><i class="bi bi-lock"></i> Private</small>
+                                                        </div>
+                                                    }
                                                     <div class="card-body">
                                                         <h6 class="card-title">@playlist.Name</h6>
                                                         <p class="card-text text-muted small">@playlist.Description</p>
                                                         <p class="card-text">
                                                             <small class="text-muted">
                                                                 @playlist.Members.Count members
+                                                                @{
+                                                                    var userRole = playlist.Members.FirstOrDefault(m => m.UserId == currentUser.Id)?.Role;
+                                                                }
+                                                                @if (userRole != null)
+                                                                {
+                                                                    <span class="badge bg-secondary">@userRole</span>
+                                                                }
+                                                            </small>
+                                                        </p>
+                                                        <p class="card-text">
+                                                            <small class="text-muted">
+                                                                Code: <code>@playlist.InviteCode</code>
                                                             </small>
                                                         </p>
                                                     </div>
                                                     <div class="card-footer">
                                                         <a href="/playlist/@playlist.Id" class="btn btn-sm btn-outline-primary">View</a>
+                                                        @if (userRole == Mixocracy.Core.Enums.PlaylistRole.Owner || userRole == Mixocracy.Core.Enums.PlaylistRole.Admin)
+                                                        {
+                                                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => CopyInviteCode(playlist.InviteCode)">
+                                                                Copy Invite
+                                                            </button>
+                                                        }
                                                     </div>
                                                 </div>
                                             </div>
@@ -60,7 +108,7 @@
                                 {
                                     <div class="text-center py-4">
                                         <h6 class="text-muted">No playlists yet</h6>
-                                        <p class="text-muted">Create your first playlist to get started!</p>
+                                        <p class="text-muted">Create your first playlist or join one using an invite code!</p>
                                     </div>
                                 }
                             </div>
@@ -81,6 +129,21 @@
                                         <i class="bi bi-box-arrow-in-right"></i> Join Playlist
                                     </button>
                                 </div>
+                                
+                                @if (testInviteCodes.Any())
+                                {
+                                    <hr>
+                                    <h6 class="text-muted">🧪 Test Invite Codes</h6>
+                                    @foreach (var inviteCode in testInviteCodes)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small><code>@inviteCode.Key</code></small>
+                                            <button class="btn btn-outline-info btn-sm" @onclick="@(() => JoinWithCode(inviteCode.Key))">
+                                                Join @inviteCode.Value
+                                            </button>
+                                        </div>
+                                    }
+                                }
                             </div>
                         </div>
                         
@@ -179,6 +242,14 @@
     private string newPlaylistDescription = "";
     private string inviteCode = "";
 
+    // Test invite codes for development
+    private Dictionary<string, string> testInviteCodes = new()
+    {
+        { "FRIDAY01", "Friday Night Vibes" },
+        { "ROADTRIP", "Road Trip Mix" },
+        { "WORKOUT1", "Workout Beats" }
+    };
+
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
@@ -188,16 +259,26 @@
     {
         isLoading = true;
         
-        // For demo purposes, get the first user
+        // For demo purposes, get the first user (testuser)
         // In a real app, this would come from authentication
-        var users = await UserService.SearchUsersAsync("test", 1);
-        if (users.Any())
+        currentUser = await UserService.GetUserByUsernameAsync("testuser");
+        
+        if (currentUser != null)
         {
-            currentUser = users.First();
             playlists = await PlaylistService.GetUserPlaylistsAsync(currentUser.Id);
         }
         
         isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task SwitchUser(string username)
+    {
+        currentUser = await UserService.GetUserByUsernameAsync(username);
+        if (currentUser != null)
+        {
+            playlists = await PlaylistService.GetUserPlaylistsAsync(currentUser.Id);
+        }
         StateHasChanged();
     }
 
@@ -242,6 +323,12 @@
         inviteCode = "";
     }
 
+    private async Task JoinWithCode(string code)
+    {
+        inviteCode = code;
+        await SubmitJoinPlaylist();
+    }
+
     private void CloseJoinModal()
     {
         showJoinModal = false;
@@ -258,5 +345,13 @@
                 CloseJoinModal();
             }
         }
+    }
+
+    private async Task CopyInviteCode(string code)
+    {
+        // In a real app, you'd use JavaScript to copy to clipboard
+        // For now, just show an alert or similar
+        await Task.Delay(1);
+        // Could implement with IJSRuntime if needed
     }
 }

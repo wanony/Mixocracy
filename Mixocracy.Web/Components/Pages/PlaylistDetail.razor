@@ -1,0 +1,286 @@
+@page "/playlist/{PlaylistId:guid}"
+@using Mixocracy.Core.Models
+@using Mixocracy.Core.Enums
+@using Mixocracy.Web.Services
+@inject IPlaylistService PlaylistService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(playlist?.Name ?? "Playlist") - Mixocracy</PageTitle>
+
+<div class="container-fluid">
+    @if (isLoading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (playlist != null)
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1>@playlist.Name</h1>
+                        <p class="text-muted">@playlist.Description</p>
+                        <div class="d-flex gap-2">
+                            @if (playlist.IsPublic)
+                            {
+                                <span class="badge bg-success"><i class="bi bi-globe"></i> Public</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark"><i class="bi bi-lock"></i> Private</span>
+                            }
+                            <span class="badge bg-info">@playlist.Members.Count members</span>
+                            <span class="badge bg-secondary">Code: @playlist.InviteCode</span>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="/dashboard" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Songs (@songs.Count)</h5>
+                        <button class="btn btn-primary btn-sm" @onclick="AddSong">
+                            <i class="bi bi-plus"></i> Add Song
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @if (songs.Any())
+                        {
+                            @foreach (var playlistSong in songs.OrderBy(s => s.Position).ThenBy(s => s.AddedAt))
+                            {
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h6 class="mb-1">@playlistSong.Song.Title</h6>
+                                                <p class="mb-1 text-muted">@playlistSong.Song.Artist</p>
+                                                @if (!string.IsNullOrEmpty(playlistSong.Song.Album))
+                                                {
+                                                    <small class="text-muted">@playlistSong.Song.Album</small>
+                                                }
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge @GetStatusBadgeClass(playlistSong.Status)">
+                                                    @playlistSong.Status
+                                                </span>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <small class="text-muted">
+                                                    Added by @playlistSong.AddedBy.DisplayName
+                                                </small>
+                                            </div>
+                                            <div class="col-md-2">
+                                                @if (playlistSong.Status == PlaylistSongStatus.Pending)
+                                                {
+                                                    <div class="d-flex gap-1">
+                                                        <button class="btn btn-sm btn-outline-success" @onclick="() => Vote(playlistSong.Id, VoteType.Upvote)">
+                                                            👍 @playlistSong.Votes.Count(v => v.Type == VoteType.Upvote)
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Vote(playlistSong.Id, VoteType.Downvote)">
+                                                            👎 @playlistSong.Votes.Count(v => v.Type == VoteType.Downvote)
+                                                        </button>
+                                                    </div>
+                                                }
+                                                else if (playlistSong.Status == PlaylistSongStatus.Approved)
+                                                {
+                                                    <small class="text-success">✓ Approved</small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <h6 class="text-muted">No songs yet</h6>
+                                <p class="text-muted">Add the first song to get this playlist started!</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6>Members</h6>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var member in playlist.Members.Where(m => m.IsActive))
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <strong>@member.User.DisplayName</strong>
+                                    <br>
+                                    <small class="text-muted">@member.User.Username</small>
+                                </div>
+                                <span class="badge @GetRoleBadgeClass(member.Role)">
+                                    @member.Role
+                                </span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6>Playlist Settings</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Voting Threshold:</strong> @((playlist.VotingThreshold * 100)):F0)%</p>
+                        <p><strong>Requires Voting:</strong> @(playlist.RequireVotingForAddition ? "Yes" : "No")</p>
+                        <p><strong>Created:</strong> @playlist.CreatedAt.ToString("MMM dd, yyyy")</p>
+                        <p><strong>Last Updated:</strong> @playlist.UpdatedAt.ToString("MMM dd, yyyy")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning mt-5">
+            <h5>Playlist Not Found</h5>
+            <p>The playlist you're looking for doesn't exist or you don't have permission to view it.</p>
+            <a href="/dashboard" class="btn btn-primary">Back to Dashboard</a>
+        </div>
+    }
+</div>
+
+<!-- Add Song Modal -->
+@if (showAddSongModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Song</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddSongModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Song URL</label>
+                        <input type="url" class="form-control" @bind="newSongUrl" placeholder="https://open.spotify.com/track/..." />
+                        <div class="form-text">
+                            Paste a link from Spotify, YouTube, Apple Music, etc.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddSongModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SubmitAddSong" disabled="@(string.IsNullOrWhiteSpace(newSongUrl))">
+                        Add Song
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid PlaylistId { get; set; }
+
+    private Playlist? playlist;
+    private List<PlaylistSong> songs = new();
+    private User? currentUser;
+    private bool isLoading = true;
+    private bool showAddSongModal = false;
+    private string newSongUrl = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        // Get current user (in a real app, this would come from authentication)
+        currentUser = await UserService.GetUserByUsernameAsync("testuser");
+        
+        if (currentUser != null)
+        {
+            playlist = await PlaylistService.GetPlaylistAsync(PlaylistId, currentUser.Id);
+            if (playlist != null)
+            {
+                songs = await PlaylistService.GetPlaylistSongsAsync(PlaylistId);
+            }
+        }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void AddSong()
+    {
+        showAddSongModal = true;
+        newSongUrl = "";
+    }
+
+    private void CloseAddSongModal()
+    {
+        showAddSongModal = false;
+    }
+
+    private async Task SubmitAddSong()
+    {
+        if (currentUser != null && !string.IsNullOrWhiteSpace(newSongUrl))
+        {
+            var success = await PlaylistService.AddSongToPlaylistAsync(PlaylistId, currentUser.Id, newSongUrl.Trim());
+            if (success)
+            {
+                await LoadData();
+                CloseAddSongModal();
+            }
+        }
+    }
+
+    private async Task Vote(Guid playlistSongId, VoteType voteType)
+    {
+        if (currentUser != null)
+        {
+            // This would use the VotingService in a complete implementation
+            // For now, just reload data
+            await LoadData();
+        }
+    }
+
+    private static string GetStatusBadgeClass(PlaylistSongStatus status)
+    {
+        return status switch
+        {
+            PlaylistSongStatus.Pending => "bg-warning text-dark",
+            PlaylistSongStatus.Approved => "bg-success",
+            PlaylistSongStatus.Rejected => "bg-danger",
+            PlaylistSongStatus.Removed => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private static string GetRoleBadgeClass(PlaylistRole role)
+    {
+        return role switch
+        {
+            PlaylistRole.Owner => "bg-primary",
+            PlaylistRole.Admin => "bg-info",
+            PlaylistRole.Member => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}

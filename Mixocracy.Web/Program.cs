@@ -29,7 +29,7 @@ builder.Services.AddScoped<IVotingService, VotingService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
-// Music Platform Services (commented out for now)
+// Music Platform Services
 builder.Services.AddScoped<IMusicPlatformService, MusicPlatformService>();
 builder.Services.AddScoped<ISpotifyService, SpotifyService>();
 builder.Services.AddScoped<IAppleMusicService, AppleMusicService>();
@@ -54,26 +54,52 @@ builder.Services.AddLogging();
 
 var app = builder.Build();
 
-// Ensure database is created (for development)
+// Ensure database is created and seeded (for development)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<MixocracyDbContext>();
-    if (context.Database.IsInMemory())
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
     {
-        context.Database.EnsureCreated();
-        
-        // Seed some test data
-        if (!context.Users.Any())
+        // Ensure database exists
+        if (context.Database.IsInMemory())
         {
-            var testUser = new Mixocracy.Core.Models.User
-            {
-                Username = "testuser",
-                Email = "test@example.com",
-                DisplayName = "Test User"
-            };
-            context.Users.Add(testUser);
-            context.SaveChanges();
+            await context.Database.EnsureCreatedAsync();
+            logger.LogInformation("Using in-memory database");
         }
+        else
+        {
+            // For real databases, use migrations
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            if (pendingMigrations.Any())
+            {
+                logger.LogInformation("Applying pending migrations...");
+                await context.Database.MigrateAsync();
+            }
+        }
+
+        // Seed test data in development environment
+        if (app.Environment.IsDevelopment())
+        {
+            logger.LogInformation("Seeding development test data...");
+            await DevDataSeeder.SeedTestDataAsync(context);
+            logger.LogInformation("Test data seeded successfully!");
+            
+            // Log test users for easy access
+            logger.LogInformation("=== TEST USERS AVAILABLE ===");
+            logger.LogInformation("Username: testuser, Email: test@example.com, Display: Test User");
+            logger.LogInformation("Username: alice, Email: alice@example.com, Display: Alice Johnson");
+            logger.LogInformation("Username: bob, Email: bob@example.com, Display: Bob Smith");
+            logger.LogInformation("Username: charlie, Email: charlie@example.com, Display: Charlie Brown");
+            logger.LogInformation("Username: diana, Email: diana@example.com, Display: Diana Prince");
+            logger.LogInformation("=============================");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while creating/seeding the database");
+        throw;
     }
 }
 
